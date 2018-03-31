@@ -20,9 +20,6 @@ import java.util.Map;
 public class Controller {
 
     @FXML
-    CheckBox saveDataCheckBox;
-
-    @FXML
     TextField gapTextField;
 
     @FXML
@@ -45,7 +42,6 @@ public class Controller {
 
     public static String state = "";
 
-    private static boolean saveData = false;
     private static HashMap<String, XYChart.Series<Number, Number>> seriesMap = new HashMap<>();
     private static final long start = System.currentTimeMillis();
     private static Controller controller;
@@ -64,16 +60,19 @@ public class Controller {
             }
         });
 
-        saveDataCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> saveData = newValue);
-
         XYChart.Series<Number, Number> norm = new XYChart.Series<>(FXCollections.observableList(Arrays.asList(new XYChart.Data<>(0, 20), new XYChart.Data<>(System.currentTimeMillis() - start, 20))));
 
         norm.setName("Norm");
         levelLineChart.getData().add(norm);
         ((NumberAxis) levelLineChart.getXAxis()).setForceZeroInRange(false);
-        levelLineChart.setAnimated(false);
+        levelLineChart.setAnimated(true);
         levelLineChart.getXAxis().setLabel("Time (ms)");
         levelLineChart.getYAxis().setLabel("Level (dbm)");
+
+        ((NumberAxis) wattLineChart.getXAxis()).setForceZeroInRange(false);
+        wattLineChart.setAnimated(true);
+        wattLineChart.getXAxis().setLabel("Time (ms)");
+        wattLineChart.getYAxis().setLabel("Power (watt)");
 
     }
 
@@ -83,17 +82,11 @@ public class Controller {
 
     }
 
-    public static void updateSeries(ArrayList<HashMap<String, String>> list){
+    public static void updateSeries(ArrayList<Wifi> list){
 
-        if (Controller.saveData){
+        for (Wifi wifi : list){
 
-            //writeData(list);
-
-        }
-
-        for (HashMap<String, String> map : list){
-
-            String ssid = map.get("ssid");
+            String ssid = wifi.getSsid();
             XYChart.Series<Number, Number> series = seriesMap.get(ssid);
 
             if (series == null){
@@ -101,7 +94,7 @@ public class Controller {
                 series = new XYChart.Series<>();
 
                 series.setName(ssid);
-                series.getData().add(new XYChart.Data<>(System.currentTimeMillis() - start, Math.random() * Double.parseDouble(map.get("level"))));
+                series.getData().add(new XYChart.Data<>(System.currentTimeMillis() - start, Math.random() * wifi.getDbm()));
                 seriesMap.put(ssid, series);
 
                 XYChart.Series<Number, Number> finalSeries = series;
@@ -117,28 +110,23 @@ public class Controller {
 
                 Platform.runLater(() -> {
 
-                    datas.add(new XYChart.Data<>(System.currentTimeMillis() - start, Double.parseDouble(map.get("level"))));
+                    datas.add(new XYChart.Data<>(System.currentTimeMillis() - start, wifi.getDbm()));
                     datas.remove(0, finalSeries.getData().size() - 20);
 
                     for (XYChart.Data data : datas){
 
                         long time = (long) data.getXValue();
 
-                        //System.out.println("T" + time + ",Ma" + maxTime + ",Mi" + minTime + "," + (time > maxTime) + ":" + (time < minTime));
-
                         if (time > maxTime) maxTime = time;
                         if (time < minTime) minTime = time;
 
                     }
-
-                    ObservableList<XYChart.Data<Number, Number>> normDatas = controller.levelLineChart.getData().get(0).getData();
-
-                    System.out.println("Final:" + maxTime + ":" + minTime);
-
-                    normDatas.get(1).setXValue(maxTime);
-                    normDatas.get(0).setXValue(minTime);
-
                 });
+
+                ObservableList<XYChart.Data<Number, Number>> normDatas = controller.levelLineChart.getData().get(0).getData();
+
+                normDatas.get(1).setXValue(maxTime);
+                normDatas.get(0).setXValue(minTime);
 
                 NumberAxis xAxis = ((NumberAxis) controller.levelLineChart.getXAxis());
 
@@ -151,12 +139,18 @@ public class Controller {
         for (Map.Entry<String, XYChart.Series<Number, Number>> entry : seriesMap.entrySet()){
 
             XYChart.Series<Number, Number> series = entry.getValue();
+            XYChart.Series<Number, Number> wattSeries = new XYChart.Series<>(FXCollections.observableArrayList());
 
             Platform.runLater(() -> {
 
-                for (XYChart.Data<Number, Number> data : series.getData()) data.setYValue(Wifi.dbmToWatt((Double) data.getYValue()));
+                for (XYChart.Data<Number, Number> data : series.getData()){
 
-                controller.wattLineChart.getData().add(series);
+                    XYChart.Data<Number, Number> newData = new XYChart.Data<>(data.getXValue(), Wifi.dbmToWatt((Double) data.getYValue()));
+                    wattSeries.getData().add(newData);
+
+                }
+
+                controller.wattLineChart.getData().add(wattSeries);
 
             });
         }
@@ -171,13 +165,6 @@ public class Controller {
 
         gapTextField.setPromptText(gap + "ms");
         gapTextField.setText("");
-
-    }
-
-    @FXML
-    public void setSaveData(){
-
-        saveData = saveDataCheckBox.isSelected();
 
     }
 

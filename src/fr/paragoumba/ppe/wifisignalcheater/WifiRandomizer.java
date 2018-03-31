@@ -39,7 +39,7 @@ public class WifiRandomizer implements Runnable {
             int noise = (int) Math.round(Math.random() * 4 - 2);
             wifi.setDbm(wifi.getDbm() + noise);
 
-            //System.out.println(wifi);
+            Controller.updateSeries(WifiFactory.wifis);
 
         }
     }

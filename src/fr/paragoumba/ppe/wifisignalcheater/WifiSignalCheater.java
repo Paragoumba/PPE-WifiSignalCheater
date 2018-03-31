@@ -17,7 +17,10 @@ public class WifiSignalCheater extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
 
-        Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
+        FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("sample.fxml"));
+        Parent root = fxmlLoader.load();
+
+        Controller.setController(fxmlLoader.getController());
 
         primaryStage.setScene(new Scene(root, 889, 500));
         primaryStage.setTitle("PPE - WifiSignalAnalyzer");
